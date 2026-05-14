@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Intelligence Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #0f172a;
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 250px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #334155;
+            resize: none;
+            box-sizing: border-box;
+            background-color: #f8fafc;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        .banner {
+            width: 100%;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #ef4444;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .results-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+
+        .result-col {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            min-height: 200px;
+        }
+
+        .col-header {
+            font-weight: 800;
+            font-size: 14px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .col-red { color: #ef4444; }
+        .col-blue { color: #2563eb; }
+        .col-purple { color: #8b5cf6; }
+
+        .item-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .item-list li {
+            font-size: 13px;
+            color: #334155;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+            line-height: 1.5;
+        }
+
+        .item-list li:last-child {
+            border-bottom: none;
+        }
+
+        .empty-state {
+            font-size: 13px;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        /* NEW FOOTER STYLE */
+        .system-footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 1.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Audit Intelligence Tool</h1>
+        <p>Analyze and categorize customer refund claims instantly</p>
+    </div>
+
+    <div class="container">
+        <div class="input-row">
+            <div class="card">
+                <div class="card-title">MASTER ORDERED LIST</div>
+                <textarea id="masterData" placeholder="Paste full order list here..."></textarea>
+            </div>
+            <div class="card">
+                <div class="card-title">REFUND CLAIM DATA</div>
+                <textarea id="claimData" placeholder="Paste customer claim JSON here..."></textarea>
+            </div>
+        </div>
+
+        <button class="btn" onclick="runAnalysis()">Run Audit Analysis</button>
+
+        <div id="alertBanner" class="banner"></div>
+
+        <div class="results-row">
+            <div class="result-col">
+                <div class="col-header col-red">🔴 SCANNED ITEMS</div>
+                <ul id="listScanned" class="item-list">
+                    <li class="empty-state">No items detected</li>
+                </ul>
+            </div>
+            <div class="result-col">
+                <div class="col-header col-blue">🔘 NOT SCANNED</div>
+                <ul id="listNotScanned" class="item-list">
+                    <li class="empty-state">No items detected</li>
+                </ul>
+            </div>
+            <div class="result-col">
+                <div class="col-header col-purple">🔄 SUBSTITUTED</div>
+                <ul id="listSubstituted" class="item-list">
+                    <li class="empty-state">No items detected</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="system-footer">
+            DEVELOPED BY HANISH
+        </div>
+    </div>
+
+<script>
+function runAnalysis() {
+    const masterRaw = document.getElementById('masterData').value;
+    const claimRaw = document.getElementById('claimData').value;
+
+    const masterLines = masterRaw.split('\n');
+    let mergedMasterLines = [];
+    let currentLine = "";
+
+    masterLines.forEach(line => {
+        let trimmed = line.trim();
+        if (trimmed.startsWith('-') || trimmed.match(/^[a-zA-Z0-9]/)) {
+            if (currentLine) mergedMasterLines.push(currentLine.toLowerCase());
+            currentLine = trimmed;
+        } else {
+            currentLine += " " + trimmed;
+        }
+    });
+    if (currentLine) mergedMasterLines.push(currentLine.toLowerCase());
+
+    let cleanClaim = claimRaw.replace(/\\n/g, ' ').replace(/"/g, ' ');
+    
+    let claimMatch = cleanClaim.match(/Claimed Items[^:]*:(.*?)(?:Claimed Value|Evidence|Outcome|Reason|$)/i);
+    let itemsText = claimMatch ? claimMatch[1] : cleanClaim;
+
+    let rawItems = itemsText.split(/-\s*\d*x/).map(i => i.trim()).filter(i => i.length > 5);
+    if(rawItems.length === 0) {
+        rawItems = itemsText.split('-').map(i => i.trim()).filter(i => i.length > 5);
+    }
+
+    let scanned = [];
+    let notScanned = [];
+    let substituted = [];
+
+    rawItems.forEach(item => {
+        let cleanItemName = item.replace(/[^a-zA-Z0-9\u00c0-\u017f\s]/g, ' ').trim();
+        let tokens = cleanItemName.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !['the', 'and', 'with'].includes(w));
+        
+        let found = false;
+        let isScanned = false;
+        let isNotScanned = false;
+
+        if (tokens.length > 0) {
+            mergedMasterLines.forEach(masterStr => {
+                let matchCount = 0;
+                tokens.forEach(t => {
+                    if (masterStr.includes(t)) matchCount++;
+                });
+
+                if (matchCount >= Math.min(2, tokens.length * 0.5)) {
+                    found = true;
+                    if (masterStr.includes("not scanned")) isNotScanned = true;
+                    else if (masterStr.includes("scanned")) isScanned = true;
+                }
+            });
+        }
+
+        if (!found) {
+            substituted.push(cleanItemName);
+        } else if (isNotScanned) {
+            notScanned.push(cleanItemName);
+        } else if (isScanned) {
+            scanned.push(cleanItemName);
+        } else {
+            notScanned.push(cleanItemName);
+        }
+    });
+
+    renderList('listScanned', scanned);
+    renderList('listNotScanned', notScanned);
+    renderList('listSubstituted', substituted);
+
+    const banner = document.getElementById('alertBanner');
+    if (scanned.length > 0 && notScanned.length === 0 && substituted.length === 0) {
+        banner.style.display = 'block';
+        banner.style.backgroundColor = '#fef2f2';
+        banner.style.color = '#ef4444';
+        banner.style.borderColor = '#fecaca';
+        banner.innerHTML = '❌ ALL CLAIMED ITEMS WERE SCANNED';
+    } else if (scanned.length > 0) {
+        banner.style.display = 'block';
+        banner.style.backgroundColor = '#fffbeb';
+        banner.style.color = '#d97706';
+        banner.style.borderColor = '#fde68a';
+        banner.innerHTML = '⚠️ MIXED CLAIMS: CONTAINS SCANNED ITEMS';
+    } else {
+        banner.style.display = 'none';
+    }
+}
+
+function renderList(elementId, itemsArray) {
+    const ul = document.getElementById(elementId);
+    ul.innerHTML = '';
+    
+    if (itemsArray.length === 0) {
+        ul.innerHTML = '<li class="empty-state">No items detected</li>';
+        return;
+    }
+
+    itemsArray.forEach(item => {
+        const li = document.createElement('li');
+        li.innerText = '• ' + item;
+        ul.appendChild(li);
+    });
+}
+</script>
+</body>
+</html>
