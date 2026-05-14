@@ -231,7 +231,6 @@ function runAnalysis() {
     const masterRaw = document.getElementById('masterData').value;
     const claimRaw = document.getElementById('claimData').value;
 
-    // 1. Line-merge scanner (rebuilds broken lines in the master list)
     const masterLines = masterRaw.split('\n');
     let mergedMasterLines = [];
     let currentLine = "";
@@ -247,19 +246,15 @@ function runAnalysis() {
     });
     if (currentLine) mergedMasterLines.push(currentLine.toLowerCase());
 
-    // 2. Extract Claims Safely 
     let claimMatch = claimRaw.match(/Claimed Items[^:]*:(.*?)(?:Claimed Value|Evidence|Outcome|Reason|$)/is);
     let itemsText = claimMatch ? claimMatch[1] : claimRaw;
 
-    // Convert literal \n strings (found in JSON) to real newlines
     itemsText = itemsText.replace(/\\n/g, '\n');
 
-    // 3. FIX: Split strictly by newlines to keep Category and Item Name glued together
     let rawItems = itemsText.split('\n')
-        .map(i => i.replace(/["\\[\]{}]/g, '').trim()) // remove json junk characters
+        .map(i => i.replace(/["\\[\]{}]/g, '').trim()) 
         .filter(i => i.length > 4 && i !== '-');
 
-    // Fallback if they pasted a single continuous line of multiple items
     if (rawItems.length === 1 && rawItems[0].split(/-\s*\d+x/).length > 2) {
          rawItems = rawItems[0].split(/(?=-\s*\d+x)/).map(i => i.trim()).filter(i => i.length > 4);
     }
@@ -268,12 +263,8 @@ function runAnalysis() {
     let notScanned = [];
     let substituted = [];
 
-    // 4. Audit Processing
     rawItems.forEach(item => {
-        // Clean up name for the visual display
         let displayItemName = item.replace(/^-+/, '').trim();
-        
-        // Clean up name for the token matcher
         let tokenStr = displayItemName.replace(/[^a-zA-Z0-9\u00c0-\u017f\s]/g, ' ').trim();
         let tokens = tokenStr.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !['the', 'and', 'with', 'each'].includes(w));
         
@@ -311,21 +302,51 @@ function runAnalysis() {
     renderList('listNotScanned', notScanned);
     renderList('listSubstituted', substituted);
 
-    // 5. Banner Display
+    // 5. Custom Banner Display Logic
     const banner = document.getElementById('alertBanner');
+    
     if (scanned.length > 0 && notScanned.length === 0 && substituted.length === 0) {
+        // ONLY SCANNED
         banner.style.display = 'block';
         banner.style.backgroundColor = '#fef2f2';
         banner.style.color = '#ef4444';
         banner.style.borderColor = '#fecaca';
         banner.innerHTML = '❌ ALL CLAIMED ITEMS WERE SCANNED';
-    } else if (scanned.length > 0) {
+    } 
+    else if (substituted.length > 0 && scanned.length === 0 && notScanned.length === 0) {
+        // ONLY SUBSTITUTES
+        banner.style.display = 'block';
+        banner.style.backgroundColor = '#f5f3ff'; 
+        banner.style.color = '#8b5cf6'; 
+        banner.style.borderColor = '#ddd6fe';
+        banner.innerHTML = '🔄 CLAIMING FOR A SUBSTITUTE';
+    }
+    else if (scanned.length > 0 && notScanned.length > 0 && substituted.length === 0) {
+        // SCANNED AND NOT SCANNED
         banner.style.display = 'block';
         banner.style.backgroundColor = '#fffbeb';
         banner.style.color = '#d97706';
         banner.style.borderColor = '#fde68a';
-        banner.innerHTML = '⚠️ MIXED CLAIMS: CONTAINS SCANNED ITEMS';
-    } else {
+        banner.innerHTML = '⚠️ BOTH SCANNED AND NOT SCANNED ITEMS ARE MISSING';
+    }
+    else if (substituted.length > 0 && (scanned.length > 0 || notScanned.length > 0)) {
+        // SUBSTITUTES + (SCANNED OR NOT SCANNED)
+        banner.style.display = 'block';
+        banner.style.backgroundColor = '#fffbeb';
+        banner.style.color = '#d97706';
+        banner.style.borderColor = '#fde68a';
+        banner.innerHTML = '⚠️ MIXED CLAIMS: SUBSTITUTE AND OTHER ITEMS';
+    }
+    else if (notScanned.length > 0 && scanned.length === 0 && substituted.length === 0) {
+        // ONLY NOT SCANNED
+        banner.style.display = 'block';
+        banner.style.backgroundColor = '#eff6ff'; // Light blue
+        banner.style.color = '#2563eb'; // Deep blue to match Not Scanned
+        banner.style.borderColor = '#bfdbfe';
+        banner.innerHTML = '✅ ONLY NOT SCANNED ITEMS ARE MISSING';
+    }
+    else {
+        // Fallback for empty/no data
         banner.style.display = 'none';
     }
 }
