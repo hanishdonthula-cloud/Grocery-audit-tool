@@ -167,7 +167,6 @@
             font-style: italic;
         }
 
-        /* NEW FOOTER STYLE */
         .system-footer {
             text-align: center;
             margin-top: 40px;
@@ -232,6 +231,7 @@ function runAnalysis() {
     const masterRaw = document.getElementById('masterData').value;
     const claimRaw = document.getElementById('claimData').value;
 
+    // 1. Line-merge scanner (rebuilds broken lines in the master list)
     const masterLines = masterRaw.split('\n');
     let mergedMasterLines = [];
     let currentLine = "";
@@ -247,23 +247,35 @@ function runAnalysis() {
     });
     if (currentLine) mergedMasterLines.push(currentLine.toLowerCase());
 
-    let cleanClaim = claimRaw.replace(/\\n/g, ' ').replace(/"/g, ' ');
-    
-    let claimMatch = cleanClaim.match(/Claimed Items[^:]*:(.*?)(?:Claimed Value|Evidence|Outcome|Reason|$)/i);
-    let itemsText = claimMatch ? claimMatch[1] : cleanClaim;
+    // 2. Extract Claims Safely 
+    let claimMatch = claimRaw.match(/Claimed Items[^:]*:(.*?)(?:Claimed Value|Evidence|Outcome|Reason|$)/is);
+    let itemsText = claimMatch ? claimMatch[1] : claimRaw;
 
-    let rawItems = itemsText.split(/-\s*\d*x/).map(i => i.trim()).filter(i => i.length > 5);
-    if(rawItems.length === 0) {
-        rawItems = itemsText.split('-').map(i => i.trim()).filter(i => i.length > 5);
+    // Convert literal \n strings (found in JSON) to real newlines
+    itemsText = itemsText.replace(/\\n/g, '\n');
+
+    // 3. FIX: Split strictly by newlines to keep Category and Item Name glued together
+    let rawItems = itemsText.split('\n')
+        .map(i => i.replace(/["\\[\]{}]/g, '').trim()) // remove json junk characters
+        .filter(i => i.length > 4 && i !== '-');
+
+    // Fallback if they pasted a single continuous line of multiple items
+    if (rawItems.length === 1 && rawItems[0].split(/-\s*\d+x/).length > 2) {
+         rawItems = rawItems[0].split(/(?=-\s*\d+x)/).map(i => i.trim()).filter(i => i.length > 4);
     }
 
     let scanned = [];
     let notScanned = [];
     let substituted = [];
 
+    // 4. Audit Processing
     rawItems.forEach(item => {
-        let cleanItemName = item.replace(/[^a-zA-Z0-9\u00c0-\u017f\s]/g, ' ').trim();
-        let tokens = cleanItemName.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !['the', 'and', 'with'].includes(w));
+        // Clean up name for the visual display
+        let displayItemName = item.replace(/^-+/, '').trim();
+        
+        // Clean up name for the token matcher
+        let tokenStr = displayItemName.replace(/[^a-zA-Z0-9\u00c0-\u017f\s]/g, ' ').trim();
+        let tokens = tokenStr.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !['the', 'and', 'with', 'each'].includes(w));
         
         let found = false;
         let isScanned = false;
@@ -279,19 +291,19 @@ function runAnalysis() {
                 if (matchCount >= Math.min(2, tokens.length * 0.5)) {
                     found = true;
                     if (masterStr.includes("not scanned")) isNotScanned = true;
-                    else if (masterStr.includes("scanned")) isScanned = true;
+                    else if (masterStr.includes("scanned") && !masterStr.includes("not scanned")) isScanned = true;
                 }
             });
         }
 
         if (!found) {
-            substituted.push(cleanItemName);
+            substituted.push(displayItemName);
         } else if (isNotScanned) {
-            notScanned.push(cleanItemName);
+            notScanned.push(displayItemName);
         } else if (isScanned) {
-            scanned.push(cleanItemName);
+            scanned.push(displayItemName);
         } else {
-            notScanned.push(cleanItemName);
+            notScanned.push(displayItemName);
         }
     });
 
@@ -299,6 +311,7 @@ function runAnalysis() {
     renderList('listNotScanned', notScanned);
     renderList('listSubstituted', substituted);
 
+    // 5. Banner Display
     const banner = document.getElementById('alertBanner');
     if (scanned.length > 0 && notScanned.length === 0 && substituted.length === 0) {
         banner.style.display = 'block';
